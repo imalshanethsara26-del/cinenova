@@ -1,0 +1,16 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "YK0ZcS3z6do7Gvx_6XzCZ"
+uri = "file://generated-artifacts/cinenova-movie-portal.zip"
+type = "unspecified"
+title = "Download Cinenova project ZIP"
+description = "Complete tracked Cinenova workspace source, including React/Tailwind frontend, API server, workspace configs, and lockfile. Excludes Git history, dependencies, build output, and local secrets."
+logical_id = "3096a4da-ce5b-4b23-9b50-85425b9da991"
+content_hash = "sha256:029e652af546d5a5d2312e737098e809be131a087c9e9cf6bff86dbe6074b8ce"
+size = 239053
+mtime_ms = 1793201918274
+storage_uri = "gcs://replit-rams-assets-kira/rams/assets/repl:aa6886b7-2141-46f4-891d-257fdbc72c56/3096a4da-ce5b-4b23-9b50-85425b9da991/8ab16560-423e-459a-a847-7fff4adff891"
+storage_version_token = "1793201925678983"
+content_type = "application/octet-stream"
