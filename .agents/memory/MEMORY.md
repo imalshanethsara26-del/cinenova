@@ -1,0 +1,1 @@
+- [Orval client version](orval-react-query-version.md) — keep generated React Query hooks aligned with the workspace runtime version.

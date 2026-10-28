@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Cinenova"
+description = "A responsive movie discovery portal with searchable listings, safe download choices, WhatsApp sharing, and a protected admin configuration page."
+version = "1.0.0"
+id = "artifacts/cinenova"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21310
+
+[services.development]
+run = "pnpm --filter @workspace/cinenova run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cinenova", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cinenova/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21310"
+BASE_PATH = "/"

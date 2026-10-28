@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: admin
+    description: Cinenova administrator session
 paths:
   /healthz:
     get:
@@ -24,6 +26,64 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /admin/session:
+    get:
+      operationId: getAdminSession
+      tags: [admin]
+      summary: Check administrator session
+      responses:
+        "200":
+          description: Current session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionStatus"
+    post:
+      operationId: createAdminSession
+      tags: [admin]
+      summary: Sign in as administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminLoginInput"
+      responses:
+        "200":
+          description: Administrator session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionStatus"
+        "400":
+          description: Invalid login request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "401":
+          description: Access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+        "503":
+          description: Administrator authentication is not configured
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiError"
+    delete:
+      operationId: deleteAdminSession
+      tags: [admin]
+      summary: Sign out administrator
+      responses:
+        "200":
+          description: Administrator session ended
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminSessionStatus"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +93,27 @@ components:
           type: string
       required:
         - status
+    AdminSessionStatus:
+      type: object
+      properties:
+        authenticated:
+          type: boolean
+      required:
+        - authenticated
+    AdminLoginInput:
+      type: object
+      properties:
+        password:
+          type: string
+          minLength: 1
+          maxLength: 256
+      required:
+        - password
+    ApiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
 
