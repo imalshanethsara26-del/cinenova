@@ -23,7 +23,11 @@ function movieFrom(value: ApiMovie): Movie {
     rating: String(value.rating ?? 'N/A'),
   };
 }
-function isBlocked(s: string) { return /t\.me|telegram/i.test(s); }
+function isBlocked(s: string) {
+  let decoded = s;
+  try { decoded = decodeURIComponent(s); } catch {}
+  return /t\.me|telegram|tg:\/\//i.test(decoded);
+}
 function eligibleOptions(payload: unknown): DownloadOption[] {
   const out: DownloadOption[] = [];
   const seen = new Set<string>();
@@ -36,18 +40,26 @@ function eligibleOptions(payload: unknown): DownloadOption[] {
     const linkText = typeof linkValue === 'string' ? linkValue : JSON.stringify(linkValue);
     const url = linkText.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? '';
     const label = String(item.label ?? item.name ?? item.provider ?? item.host ?? item.title ?? inheritedLabel);
-    const explicitLabel = `${label} ${linkText} ${String(item.type ?? '')} ${String(item.source ?? '')}`;
-    const safeLinkFields = `${linkText} ${String(item.quality ?? '')} ${String(item.language ?? '')} ${label} ${serialized}`;
-    const directLabel = /direct\s*(?:dl|download)/i.test(explicitLabel);
-    const pixelLabel = /pixeldrain/i.test(explicitLabel);
-    if (url && /^https?:\/\//i.test(url) && !isBlocked(safeLinkFields) && (directLabel || pixelLabel)) {
+    const quality = String(item.quality ?? item.resolution ?? '');
+    const sourceText = `${inheritedLabel} ${label} ${quality} ${linkText} ${String(item.type ?? '')} ${String(item.source ?? '')}`;
+    const safeLinkFields = `${sourceText} ${String(item.language ?? '')} ${serialized}`;
+    let parsedUrl: URL | undefined;
+    try { parsedUrl = new URL(url); } catch {}
+    const host = parsedUrl?.hostname.toLowerCase() ?? '';
+    const path = parsedUrl?.pathname ?? '';
+    const pixelLabel = /pixeldrain/i.test(sourceText) || /(^|\.)pixeldrain\.com$/i.test(host);
+    const directUrl = /(^|\.)streamx\.(?:link|lk)$/i.test(host)
+      || /\/(?:dl|download)(?:\/|$)/i.test(path)
+      || /\.(?:mp4|mkv|avi|mov|webm|zip|rar|7z|torrent)$/i.test(path);
+    const directOption = /direct\s*(?:dl|download)/i.test(sourceText) || directUrl;
+    if (url && /^https?:\/\//i.test(url) && !isBlocked(safeLinkFields) && (directOption || pixelLabel)) {
       const key = `${label}|${url}`;
       if (!seen.has(key)) {
         seen.add(key);
         out.push({
           label: pixelLabel ? 'PixelDrain' : 'Direct DL',
           url, provider: label || 'Direct DL',
-          quality: String(item.quality ?? item.resolution ?? ''),
+          quality,
           size: String(item.size ?? item.file_size ?? item.filesize ?? ''),
         });
       }
