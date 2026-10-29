@@ -9,6 +9,7 @@ import { ArrowLeft, ArrowRight, Check, ChevronLeft, Clapperboard, Download, Film
 
 const queryClient = new QueryClient();
 const API = 'https://chithrapata-api.onrender.com';
+const BOT_API_ENDPOINT = 'https://cinenovabot.loca.lt/api/bot/send-movie';
 type Movie = { title: string; image: string; quality: string; rating: string; link: string };
 type DownloadOption = { label: string; url: string; quality: string; size: string; provider: string };
 type ApiMovie = Record<string, unknown>;
@@ -193,24 +194,37 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
     const botApiUrl = localStorage.getItem('botApiUrl')?.trim() ?? '';
     const whatsappJid = localStorage.getItem('whatsappJid')?.trim() ?? '';
     if (!botApiUrl) { setError('Bot not connected, please try again later'); return; }
-    let endpoint: URL;
-    try {
-      endpoint = new URL(botApiUrl);
-    } catch {
-      setError('Configure a valid HTTPS bot endpoint in admin settings.');
-      return;
-    }
-    if (endpoint.protocol !== 'https:') {
-      setError('Configure a valid HTTPS bot endpoint in admin settings.');
-      return;
-    }
     setError(''); setSending(true);
     try {
-      const response = await fetch(endpoint.toString(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ whatsappJid, userPhone: cleanPhone, movieTitle: `${movie} ${option.quality}`.trim(), fileSize: option.size || 'N/A', downloadLink: option.url }) });
-      if (!response.ok) throw new Error('Request failed. Please try again.');
+      const payload = {
+        whatsappJid,
+        userPhone: cleanPhone,
+        movieTitle: `${movie} ${option.quality}`.trim(),
+        fileSize: option.size || 'N/A',
+        downloadLink: option.url,
+      };
+      const response = await fetch(BOT_API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true',
+        },
+        body: JSON.stringify(payload),
+      });
+      const contentType = response.headers.get('content-type') ?? '';
+      if (!contentType.toLowerCase().includes('application/json')) {
+        throw new Error(`Bot endpoint returned a non-JSON response (HTTP ${response.status}).`);
+      }
+      const result = await response.json() as { success?: boolean; message?: string; error?: string };
+      if (!response.ok || result.success === false) {
+        throw new Error(result.message || result.error || `Bot request failed (HTTP ${response.status}).`);
+      }
       toast.success('Movie sent to WhatsApp successfully!');
       close();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Could not send your request. Please try again.'); }
+    } catch (err) {
+      console.error('Movie request to WhatsApp bot failed:', err);
+      setError(err instanceof Error ? err.message : 'Could not send your request. Please try again.');
+    }
     finally { setSending(false); }
   };
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060b]/80 p-4 backdrop-blur-md" onClick={close} role="presentation">
@@ -302,7 +316,7 @@ function AdminPage() {
     login.mutate({ data: { password } }, { onSuccess: () => { setPassword(''); queryClient.invalidateQueries({ queryKey: getGetAdminSessionQueryKey() }); }, onError: () => setLoginError('Access denied') });
   };
   const saveConfig = (e: FormEvent) => {
-    e.preventDefault(); localStorage.setItem('botApiUrl', botApiUrl.trim()); localStorage.setItem('whatsappJid', whatsappJid.trim()); setSaved(true); toast.success('Bot configuration saved.');
+    e.preventDefault(); localStorage.setItem('botApiUrl', BOT_API_ENDPOINT); localStorage.setItem('whatsappJid', whatsappJid.trim()); setBotApiUrl(BOT_API_ENDPOINT); setSaved(true); toast.success('Bot configuration saved.');
     window.setTimeout(() => setSaved(false), 2400);
   };
   const signOut = () => logout.mutate(undefined, { onSuccess: () => queryClient.invalidateQueries({ queryKey: getGetAdminSessionQueryKey() }) });
@@ -313,7 +327,7 @@ function AdminPage() {
       <form onSubmit={submitLogin} className="mt-6"><label htmlFor="admin-password" className="mb-2 block text-xs font-medium text-slate-300">Administrator password</label><input id="admin-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required data-testid="input-admin-password" className="w-full rounded-lg border border-white/10 bg-[#0d0f19] px-4 py-3 text-sm text-white outline-none focus:border-cyan-200/50"/>{loginError && <p role="alert" data-testid="status-admin-login-error" className="mt-2 text-xs text-rose-300">{loginError}</p>}<button disabled={login.isPending} data-testid="button-admin-login" className="mt-4 flex w-full items-center justify-center gap-2 rounded-lg bg-cyan-300 px-4 py-3 text-sm font-bold text-[#091014] hover:bg-cyan-200 disabled:opacity-60">{login.isPending ? <LoaderCircle size={16} className="animate-spin"/> : <LockKeyhole size={16}/>} Sign in</button></form>
     </section> : <section className="rounded-2xl border border-white/[.1] bg-[#151725]/75 p-6 md:p-8">
        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/[.08] pb-6"><div className="flex items-center gap-3"><span className={`flex h-10 w-10 items-center justify-center rounded-xl border ${botConnected ? 'border-emerald-200/20 bg-emerald-200/[.07]' : 'border-rose-200/20 bg-rose-200/[.07]'}`}><span data-testid="status-bot-connection-dot" className={`h-2.5 w-2.5 rounded-full ${botConnected ? 'animate-pulse bg-emerald-300 shadow-[0_0_14px_rgba(110,255,180,.85)]' : 'bg-rose-400 shadow-[0_0_12px_rgba(251,113,133,.65)]'}`}/></span><div><h2 className="font-semibold text-white">Bot configuration</h2><p data-testid="status-admin-authenticated" className="mt-1 text-xs text-slate-500">Administrator session active · <span className={botConnected ? 'text-emerald-200' : 'text-rose-300'}>{botConnected ? 'Bot connected' : 'Bot not connected'}</span></p></div></div><button onClick={signOut} disabled={logout.isPending} data-testid="button-admin-logout" className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:border-white/20 hover:text-white">Sign out</button></div>
-      <form onSubmit={saveConfig} className="mt-7 space-y-5"><div><label htmlFor="bot-api-url" className="mb-2 block text-xs font-medium text-slate-300">Bot API endpoint</label><input id="bot-api-url" type="url" value={botApiUrl} onChange={(e) => setBotApiUrl(e.target.value)} placeholder="https://your-bot-service.example/request" data-testid="input-bot-api-url" className="w-full rounded-lg border border-white/10 bg-[#0d0f19] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/50"/><p className="mt-2 text-[10px] text-slate-600">POST destination for movie delivery requests.</p></div>
+      <form onSubmit={saveConfig} className="mt-7 space-y-5"><div><label htmlFor="bot-api-url" className="mb-2 block text-xs font-medium text-slate-300">Bot API endpoint</label><input id="bot-api-url" type="url" value={BOT_API_ENDPOINT} readOnly data-testid="input-bot-api-url" className="w-full cursor-not-allowed rounded-lg border border-white/10 bg-[#0d0f19] px-4 py-3 text-sm text-white opacity-80 outline-none"/><p className="mt-2 text-[10px] text-slate-600">Fixed LocalTunnel destination for movie delivery requests.</p></div>
         <div><label htmlFor="whatsapp-jid" className="mb-2 block text-xs font-medium text-slate-300">WhatsApp JID</label><input id="whatsapp-jid" value={whatsappJid} onChange={(e) => setWhatsappJid(e.target.value)} placeholder="destination@s.whatsapp.net" data-testid="input-whatsapp-jid" className="w-full rounded-lg border border-white/10 bg-[#0d0f19] px-4 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-200/50"/></div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[.08] pt-5"><p className="max-w-md text-[10px] leading-4 text-slate-500">Values are saved locally in this browser and included when a viewer submits a WhatsApp request.</p><button data-testid="button-save-bot-config" className="flex items-center gap-2 rounded-lg bg-cyan-300 px-5 py-3 text-xs font-bold text-[#091014] transition hover:bg-cyan-200">{saved ? <Check size={15}/> : <Settings2 size={15}/>} {saved ? 'Saved' : 'Save configuration'}</button></div>
       </form>
