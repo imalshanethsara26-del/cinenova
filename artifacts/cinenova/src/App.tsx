@@ -1,11 +1,11 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { Route, Switch, useLocation, Router as WouterRouter } from 'wouter';
 import { useCreateAdminSession, useDeleteAdminSession, useGetAdminSession, getGetAdminSessionQueryKey } from '@workspace/api-client-react';
 import { Toaster as SonnerToaster, toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Check, ChevronLeft, Clapperboard, Download, Film, LoaderCircle, LockKeyhole, MessageCircle, Search, Settings2, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ChevronLeft, Download, Film, LoaderCircle, LockKeyhole, MessageCircle, Search, Settings2, ShieldCheck, X } from 'lucide-react';
 
 const queryClient = new QueryClient();
 const API = 'https://chithrapata-api.onrender.com';
@@ -13,6 +13,12 @@ const DEFAULT_BOT_API_ENDPOINT = 'https://cinenovabot.loca.lt/api/bot/send-movie
 type Movie = { title: string; image: string; quality: string; rating: string; link: string };
 type DownloadOption = { label: string; url: string; quality: string; size: string; provider: string };
 type ApiMovie = Record<string, unknown>;
+
+function isTelegramRelated(value: string) {
+  let decoded = value;
+  try { decoded = decodeURIComponent(value); } catch {}
+  return /t\.me|telegram|tg:\/\//i.test(decoded);
+}
 
 function movieFrom(value: ApiMovie): Movie {
   const title = String(value.title ?? value.name ?? value.movie_title ?? 'Untitled film');
@@ -24,11 +30,6 @@ function movieFrom(value: ApiMovie): Movie {
     rating: String(value.rating ?? 'N/A'),
   };
 }
-function isBlocked(s: string) {
-  let decoded = s;
-  try { decoded = decodeURIComponent(s); } catch {}
-  return /t\.me|telegram|tg:\/\//i.test(decoded);
-}
 function eligibleOptions(payload: unknown): DownloadOption[] {
   const out: DownloadOption[] = [];
   const seen = new Set<string>();
@@ -36,30 +37,23 @@ function eligibleOptions(payload: unknown): DownloadOption[] {
     if (Array.isArray(value)) { value.forEach((v) => walk(v, inheritedLabel)); return; }
     if (!value || typeof value !== 'object') return;
     const item = value as Record<string, unknown>;
-    const serialized = JSON.stringify(item);
     const linkValue = item.url ?? item.link ?? item.download_url ?? item.downloadUrl ?? item.href ?? '';
     const linkText = typeof linkValue === 'string' ? linkValue : JSON.stringify(linkValue);
     const url = linkText.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? '';
     const label = String(item.label ?? item.name ?? item.provider ?? item.host ?? item.title ?? inheritedLabel);
     const quality = String(item.quality ?? item.resolution ?? '');
-    const sourceText = `${inheritedLabel} ${label} ${quality} ${linkText} ${String(item.type ?? '')} ${String(item.source ?? '')}`;
-    const safeLinkFields = `${sourceText} ${String(item.language ?? '')} ${serialized}`;
+    const telegramCheck = `${inheritedLabel} ${label} ${quality} ${linkText} ${JSON.stringify(item)}`;
     let parsedUrl: URL | undefined;
     try { parsedUrl = new URL(url); } catch {}
     const host = parsedUrl?.hostname.toLowerCase() ?? '';
-    const path = parsedUrl?.pathname ?? '';
-    const pixelLabel = /pixeldrain/i.test(sourceText) || /(^|\.)pixeldrain\.com$/i.test(host);
-    const directUrl = /(^|\.)streamx\.(?:link|lk)$/i.test(host)
-      || /\/(?:dl|download)(?:\/|$)/i.test(path)
-      || /\.(?:mp4|mkv|avi|mov|webm|zip|rar|7z|torrent)$/i.test(path);
-    const directOption = /direct\s*(?:dl|download)/i.test(sourceText) || directUrl;
-    if (url && /^https?:\/\//i.test(url) && !isBlocked(safeLinkFields) && (directOption || pixelLabel)) {
+    const pixelDrainHost = host === 'pixeldrain.com' || host.endsWith('.pixeldrain.com');
+    if (url && parsedUrl?.protocol === 'https:' && pixelDrainHost && !parsedUrl.username && !parsedUrl.password && !isTelegramRelated(telegramCheck)) {
       const key = `${label}|${url}`;
       if (!seen.has(key)) {
         seen.add(key);
         out.push({
-          label: pixelLabel ? 'PixelDrain' : 'Direct DL',
-          url, provider: label || 'Direct DL',
+          label: 'PixelDrain',
+          url, provider: 'PixelDrain',
           quality,
           size: String(item.size ?? item.file_size ?? item.filesize ?? ''),
         });
@@ -103,9 +97,8 @@ function Header() {
   const [, setLocation] = useLocation();
   return <header className="relative z-20 border-b border-white/[.07] bg-[#0b0c16]/70 backdrop-blur-xl">
     <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-5 md:px-10">
-      <button onClick={() => setLocation('/')} data-testid="link-home" className="group flex items-center gap-3 text-left">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-300/25 bg-cyan-300/[.08] text-cyan-200 shadow-[0_0_24px_rgba(30,217,228,.09)]"><Clapperboard size={20}/></span>
-        <span><span className="block text-[17px] font-bold tracking-[.14em] text-white">CINENOVA</span><span className="block font-mono text-[9px] tracking-[.19em] text-cyan-200/60">THE FILM INDEX</span></span>
+      <button onClick={() => setLocation('/')} data-testid="link-home" aria-label="Cinenova home" className="group flex min-w-0 items-center text-left">
+        <img src="/images/cinenova-logo-banner.webp" alt="Cinenova" className="h-[54px] w-[190px] max-w-[58vw] object-contain object-left sm:h-[62px] sm:w-[235px]"/>
       </button>
       <nav className="flex items-center gap-4 md:gap-8">
         <button onClick={() => setLocation('/')} className="hidden text-[13px] font-medium text-slate-300 transition hover:text-cyan-200 sm:block" data-testid="nav-discover">Discover</button>
@@ -116,7 +109,15 @@ function Header() {
   </header>;
 }
 function Footer() {
-  return <footer className="mt-24 border-t border-white/[.07]"><div className="mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-5 py-7 text-[11px] text-slate-500 sm:flex-row md:px-10"><span className="font-mono tracking-[.12em]">CINENOVA <span className="text-cyan-300/70">/</span> MOVIE DISCOVERY</span><span>Developed by IMALSHA NETHSARA</span><span>Choose clean. Request safely.</span></div></footer>;
+  return <footer className="mt-20 border-t border-white/[.08] bg-[#0b1220]/45">
+    <div className="mx-auto flex max-w-[1320px] flex-col gap-5 px-5 py-8 md:px-10">
+      <p className="max-w-5xl text-[11px] leading-5 text-slate-500">Disclaimer &amp; Credit: All movie rights, subtitles, and original content belong exclusively to chithrapata.com. CINENOVA is an independent utility platform designed solely to assist users in seamlessly delivering movie streams directly to their WhatsApp chats for personal convenience.</p>
+      <div className="flex flex-col gap-2 border-t border-white/[.06] pt-4 text-[10px] text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <span className="font-mono tracking-[.12em]">CINENOVA <span className="text-orange-400">/</span> MOVIE DISCOVERY</span>
+        <span>Developed by IMALSHA NETHSARA</span>
+      </div>
+    </div>
+  </footer>;
 }
 function SkeletonGrid() {
   return <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">{Array.from({ length: 12 }, (_, i) => <div key={i} className="animate-pulse"><div className="aspect-[2/3] rounded-xl border border-white/[.06] bg-white/[.045]"/><div className="mt-3 h-3 w-4/5 rounded bg-white/[.06]"/><div className="mt-2 h-2 w-2/5 rounded bg-white/[.04]"/></div>)}</div>;
@@ -131,8 +132,8 @@ function MovieTile({ movie, index }: { movie: Movie; index: number }) {
       <span className="absolute left-2.5 top-2.5 z-30 rounded border border-cyan-200/25 bg-[#07161b]/75 px-2 py-1 font-mono text-[9px] tracking-wide text-cyan-100 backdrop-blur">{movie.quality || 'WEB-DL'}</span>
       <span className="absolute bottom-3 right-3 z-30 flex h-8 w-8 translate-y-2 items-center justify-center rounded-full border border-cyan-200/30 bg-cyan-300/15 text-cyan-100 opacity-0 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100"><ArrowRight size={15}/></span>
     </div>
-    <h3 className="mt-3 line-clamp-2 min-h-[40px] text-[13px] font-semibold leading-5 text-slate-200 transition group-hover:text-cyan-100" data-testid={`text-movie-title-${index}`}>{movie.title}</h3>
-    <p className="mt-1 font-mono text-[10px] tracking-wider text-slate-500">RATING <span className="text-slate-300">{movie.rating}</span></p>
+    <h3 className="mt-3 line-clamp-2 min-h-[40px] text-[13px] font-semibold leading-5 text-slate-200 transition group-hover:text-orange-200" data-testid={`text-movie-title-${index}`}>{movie.title}</h3>
+    <div className="mt-1 flex min-w-0 items-center justify-between gap-1 font-mono text-[9px] tracking-wide text-slate-500"><span className="truncate">{movie.quality || 'WEB-DL'}</span><span className="shrink-0 text-amber-200">IMDb {movie.rating}</span></div>
   </button>;
 }
 function HomePage() {
@@ -150,13 +151,13 @@ function HomePage() {
       {!activeQuery && <section className="relative flex min-h-[340px] items-center overflow-hidden border-b border-white/[.07] py-14 md:min-h-[390px]">
         <div className="pointer-events-none absolute right-[-4%] top-[-40px] h-[390px] w-[390px] rounded-full border border-cyan-300/[.08] before:absolute before:inset-8 before:rounded-full before:border before:border-purple-300/[.12] after:absolute after:inset-20 after:rounded-full after:bg-[radial-gradient(circle,rgba(28,203,220,.1),transparent_68%)]"/>
         <div className="relative max-w-[730px] fade-up">
-          <div className="mb-6 flex items-center gap-3 font-mono text-[10px] tracking-[.25em] text-cyan-200/70"><span className="h-px w-9 bg-cyan-300/70"/> ISSUE 01 <span className="text-slate-600">/</span> FIND YOUR NEXT FILM</div>
+          <div className="mb-6 flex min-w-0 flex-wrap items-center gap-3 font-mono text-[10px] tracking-[.25em] text-cyan-200/70 max-[380px]:gap-2 max-[380px]:tracking-[.12em]"><span className="h-px w-9 shrink-0 bg-cyan-300/70"/> ISSUE 01 <span className="text-slate-600">/</span> FIND YOUR NEXT FILM</div>
           <h1 className="text-[clamp(48px,8vw,88px)] font-bold leading-[.92] tracking-[-.065em] text-white">The next one<br/><span className="text-cyan-200">starts here.</span></h1>
           <p className="mt-6 max-w-[450px] text-sm leading-6 text-slate-400">A fast index of films worth your time. Find the title, check the available links, and request a clean copy through WhatsApp.</p>
           <form onSubmit={submitSearch} className="mt-8 flex max-w-[580px] gap-2 rounded-xl border border-white/[.12] bg-[#171925]/75 p-1.5 shadow-[0_18px_60px_rgba(0,0,0,.25)] backdrop-blur-xl">
-            <Search size={18} className="ml-3 mt-[11px] shrink-0 text-cyan-200/70"/>
+            <Search size={18} className="ml-3 mt-[11px] shrink-0 text-cyan-200/70 max-[380px]:ml-2"/>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search a title..." aria-label="Search movies" data-testid="input-movie-search" className="min-w-0 flex-1 bg-transparent px-1 py-2 text-sm text-white outline-none placeholder:text-slate-600"/>
-            <button type="submit" data-testid="button-search" className="rounded-lg bg-cyan-300 px-5 py-2 text-xs font-bold tracking-wide text-[#071014] transition hover:bg-cyan-200">Search</button>
+            <button type="submit" data-testid="button-search" className="shrink-0 rounded-lg bg-cyan-300 px-5 py-2 text-xs font-bold tracking-wide text-[#071014] transition hover:bg-cyan-200 max-[380px]:px-2">Search</button>
           </form>
         </div>
         <div className="absolute bottom-9 right-0 hidden font-mono text-[9px] tracking-[.2em] text-slate-600 lg:block">CURATED SIGNAL / 2026</div>
@@ -186,10 +187,24 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
   const [phone, setPhone] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    dialogRef.current?.focus();
+    return () => previouslyFocused?.focus();
+  }, []);
   if (!option) return null;
   const send = async (e: FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.trim();
+    let selectedUrl: URL | undefined;
+    try { selectedUrl = new URL(option.url); } catch {}
+    if (!selectedUrl || selectedUrl.protocol !== 'https:' || !(selectedUrl.hostname.toLowerCase() === 'pixeldrain.com' || selectedUrl.hostname.toLowerCase().endsWith('.pixeldrain.com'))) {
+      const message = 'This download source is not available.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
     if (!/^\+?[0-9][0-9\s()-]{7,18}$/.test(cleanPhone)) {
       const message = 'Enter a valid WhatsApp phone number.';
       setError(message);
@@ -206,7 +221,7 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
         userPhone: cleanPhone,
         movieTitle: movie.trim(),
         fileSize: option.size || 'N/A',
-        downloadLink: option.url,
+        downloadLink: selectedUrl.href,
       };
       const response = await fetch(botApiUrl, {
         method: 'POST',
@@ -245,13 +260,13 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
     }
     finally { setSending(false); }
   };
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05060b]/80 p-4 backdrop-blur-md" onClick={close} role="presentation">
-    <div role="dialog" aria-modal="true" aria-labelledby="download-title" className="relative w-full max-w-[470px] rounded-2xl border border-cyan-100/15 bg-[#141624] p-6 shadow-[0_28px_100px_rgba(0,0,0,.6)] md:p-8" onClick={(e) => e.stopPropagation()}>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#050914]/85 p-3 backdrop-blur-md sm:p-5" onClick={close} role="presentation">
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="download-title" tabIndex={-1} className="relative my-auto max-h-[calc(100dvh-24px)] w-full max-w-[470px] overflow-y-auto rounded-2xl border border-orange-300/20 bg-[#141b2a]/95 p-5 shadow-[0_28px_100px_rgba(0,0,0,.6)] sm:p-7" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => { if (e.key === 'Escape') close(); }}>
       <button onClick={close} aria-label="Close dialog" data-testid="button-close-download-modal" className="absolute right-4 top-4 rounded-full p-2 text-slate-500 hover:bg-white/[.06] hover:text-white"><X size={17}/></button>
       <div className="mb-5 flex h-11 w-11 items-center justify-center rounded-xl border border-cyan-200/20 bg-cyan-200/[.08] text-cyan-100"><MessageCircle size={20}/></div>
       <p className="font-mono text-[9px] tracking-[.22em] text-cyan-200/70">REQUEST A CLEAN COPY</p>
       <h2 id="download-title" className="mt-2 pr-8 text-xl font-semibold leading-snug text-white">{movie}</h2>
-      <div className="mt-5 grid grid-cols-3 gap-2 rounded-xl border border-white/[.07] bg-white/[.025] p-3">
+      <div className="mt-5 grid min-w-0 grid-cols-1 gap-3 rounded-xl border border-white/[.07] bg-white/[.025] p-3 sm:grid-cols-3 sm:gap-2">
         <div><span className="block font-mono text-[8px] tracking-wider text-slate-500">SOURCE</span><span className="mt-1 block text-xs text-slate-200">{option.label}</span></div>
         <div><span className="block font-mono text-[8px] tracking-wider text-slate-500">QUALITY</span><span className="mt-1 block text-xs text-slate-200">{option.quality || 'Available'}</span></div>
         <div><span className="block font-mono text-[8px] tracking-wider text-slate-500">FILE SIZE</span><span className="mt-1 block text-xs text-slate-200">{option.size || 'Not listed'}</span></div>
@@ -310,9 +325,10 @@ function MoviePage() {
             </div>
           </div>
         ) : null}
-        <div className="mt-10 border-t border-white/[.08] pt-6"><div className="flex items-center justify-between gap-3"><div><p className="font-mono text-[9px] tracking-[.2em] text-purple-200/70">AVAILABLE SOURCES</p><h2 className="mt-2 text-lg font-semibold text-white">Choose a clean link</h2></div><span className="font-mono text-[10px] text-slate-500">{options.length} OPTIONS</span></div>
-        {options.length ? <div className="mt-5 grid gap-3 sm:grid-cols-2">{options.map((option, i) => <button key={`${option.url}-${i}`} onClick={() => setSelected(option)} data-testid={`button-download-option-${i}`} className="group flex items-center justify-between rounded-xl border border-white/[.09] bg-white/[.025] p-4 text-left transition hover:border-cyan-200/40 hover:bg-cyan-200/[.04]"><span className="flex items-center gap-3"><span className="flex h-10 w-10 items-center justify-center rounded-lg border border-purple-200/15 bg-purple-300/[.07] text-purple-100"><Download size={17}/></span><span><span className="block text-sm font-semibold text-slate-100">{option.label}</span><span className="mt-1 block text-[10px] text-slate-500">{[option.quality, option.size].filter(Boolean).join(' · ') || 'Request via WhatsApp'}</span></span></span><ArrowRight size={16} className="text-slate-600 transition group-hover:translate-x-1 group-hover:text-cyan-100"/></button>)}</div> : <div data-testid="status-no-eligible-downloads" className="mt-5 rounded-xl border border-white/[.08] bg-white/[.025] p-5 text-sm leading-6 text-slate-400">No eligible clean download sources are available for this title right now.</div>}
-        <p className="mt-5 flex items-center gap-2 text-[10px] text-slate-600"><ShieldCheck size={13}/> Only Direct DL and PixelDrain sources are shown.</p></div>
+        <div className="mt-10 min-w-0 border-t border-white/[.08] pt-6"><div className="flex min-w-0 flex-wrap items-end justify-between gap-3"><div className="min-w-0"><p className="font-mono text-[9px] tracking-[.2em] text-orange-300/80">AVAILABLE SOURCES</p><h2 className="mt-2 text-lg font-semibold text-white">Choose a clean link</h2></div><span className="font-mono text-[10px] text-slate-500">{options.length} OPTIONS</span></div>
+        <a href="https://chat.whatsapp.com/KOfwT7f5EgoCm2T6uFkczg?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer" data-testid="link-whatsapp-group" className="mt-5 flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] px-4 py-3 text-sm font-semibold leading-6 text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-300/[.1]"><MessageCircle size={19} className="shrink-0 text-emerald-300"/><span className="min-w-0 break-words">අපගේ WhatsApp සමූහයට අනිවාර්යයෙන්ම සම්බන්ධ වන්න!</span><ArrowRight size={15} className="ml-auto shrink-0"/></a>
+        {options.length ? <div className="mt-4 grid min-w-0 gap-3">{options.map((option, i) => <button key={`${option.url}-${i}`} onClick={() => setSelected(option)} data-testid={`button-download-option-${i}`} className="group flex min-h-[72px] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[.09] bg-white/[.025] p-4 text-left transition hover:border-orange-200/40 hover:bg-orange-200/[.04]"><span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-orange-200/20 bg-orange-300/[.08] text-orange-100"><Download size={17}/></span><span className="min-w-0"><span className="block text-sm font-semibold text-slate-100">{option.label}</span><span className="mt-1 block break-words text-[10px] text-slate-500">{[option.quality, option.size].filter(Boolean).join(' · ') || 'Request via WhatsApp'}</span></span></span><ArrowRight size={16} className="shrink-0 text-slate-600 transition group-hover:translate-x-1 group-hover:text-orange-100"/></button>)}</div> : <div data-testid="status-no-eligible-downloads" className="mt-5 rounded-xl border border-white/[.08] bg-white/[.025] p-5 text-sm leading-6 text-slate-400">No eligible download sources are available for this title right now.</div>}
+        <p className="mt-5 flex items-center gap-2 text-[10px] text-slate-600"><ShieldCheck size={13}/><span>Only verified PixelDrain links are available. Requests are sent through WhatsApp.</span></p></div>
        </div>
      </div>}</main><Footer/>{selected && <DownloadModal movie={movie.title} option={selected} close={() => setSelected(null)}/>}</div>;
 }

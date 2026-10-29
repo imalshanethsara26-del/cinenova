@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+Sinhala:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @plugin "@tailwindcss/typography";
@@ -79,7 +79,7 @@
   --elevate-1: rgba(0, 0, 0, 0.03);
   --elevate-2: rgba(0, 0, 0, 0.08);
 
-  --background: 232 32% 7%;
+  --background: 218 37% 9%;
   --foreground: 205 35% 94%;
   --border: 226 22% 19%;
   --card: 232 28% 10%;
@@ -96,20 +96,20 @@
   --popover: 232 28% 11%;
   --popover-foreground: 205 35% 94%;
   --popover-border: 226 22% 22%;
-  --primary: 184 100% 54%;
-  --primary-foreground: 232 32% 7%;
-  --secondary: 275 72% 58%;
+  --primary: 21 94% 54%;
+  --primary-foreground: 218 37% 9%;
+  --secondary: 35 93% 58%;
   --secondary-foreground: 0 0% 100%;
   --muted: 228 22% 15%;
   --muted-foreground: 219 13% 63%;
-  --accent: 275 72% 58%;
+  --accent: 35 93% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 76% 58%;
   --destructive-foreground: 0 0% 100%;
   --input: 226 22% 24%;
-  --ring: 184 100% 54%;
-  --chart-1: 184 100% 54%;
-  --chart-2: 275 72% 58%;
+  --ring: 21 94% 54%;
+  --chart-1: 21 94% 54%;
+  --chart-2: 35 93% 58%;
   --chart-3: 35 94% 63%;
   --chart-4: 153 58% 51%;
   --chart-5: 340 72% 63%;
@@ -200,7 +200,7 @@
   --elevate-1: rgba(255, 255, 255, 0.04);
   --elevate-2: rgba(255, 255, 255, 0.09);
 
-  --background: 232 32% 7%;
+  --background: 218 37% 9%;
   --foreground: 205 35% 94%;
   --border: 226 22% 19%;
   --card: 232 28% 10%;
@@ -217,22 +217,22 @@
   --popover: 232 28% 11%;
   --popover-foreground: 205 35% 94%;
   --popover-border: 226 22% 22%;
-  --primary: 184 100% 54%;
-  --primary-foreground: 232 32% 7%;
-  --secondary: 275 72% 58%;
+  --primary: 21 94% 54%;
+  --primary-foreground: 218 37% 9%;
+  --secondary: 35 93% 58%;
   --secondary-foreground: 0 0% 100%;
   --muted: 228 22% 15%;
   --muted-foreground: 219 13% 63%;
-  --accent: 275 72% 58%;
+  --accent: 35 93% 58%;
   --accent-foreground: 0 0% 100%;
   --destructive: 0 76% 58%;
   --destructive-foreground: 0 0% 100%;
 
   /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
   --input: 226 22% 24%;
-  --ring: 184 100% 54%;
-  --chart-1: 184 100% 54%;
-  --chart-2: 275 72% 58%;
+  --ring: 21 94% 54%;
+  --chart-1: 21 94% 54%;
+  --chart-2: 35 93% 58%;
   --chart-3: 35 94% 63%;
   --chart-4: 153 58% 51%;
   --chart-5: 340 72% 63%;
@@ -288,14 +288,37 @@
  * need to be distinguished from eachother visually.
  */
 @layer base {
-  body { background: #0c0d17; font-family: var(--app-font-sans); }
+  body { background: #0f172a; font-family: var(--app-font-sans), 'Noto Sans Sinhala', sans-serif; }
 }
-.cinema-bg { background-image: radial-gradient(ellipse at 75% 0%, rgba(72,31,123,.22), transparent 38%), radial-gradient(ellipse at 5% 20%, rgba(0,181,194,.09), transparent 32%), linear-gradient(180deg,#0c0d17 0%,#10111d 100%); }
+.cinema-bg { background-color:#0f172a; background-image:radial-gradient(ellipse at 82% 1%,rgba(249,115,22,.13),transparent 34%),radial-gradient(ellipse at 2% 28%,rgba(104,125,153,.08),transparent 36%),linear-gradient(180deg,#0f172a 0%,#111827 58%,#0b1220 100%); }
 .film-grain::after { content:""; pointer-events:none; position:fixed; inset:0; opacity:.1; z-index:10; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E"); }
-.poster-card { transition: transform .28s ease,border-color .28s ease,box-shadow .28s ease; }
-.poster-card:hover { transform:translateY(-6px); border-color:rgba(42,229,239,.55); box-shadow:0 18px 48px rgba(0,0,0,.35),0 0 25px rgba(23,206,219,.09); }
+.poster-card { transition: transform .28s ease,border-color .28s ease,box-shadow .28s ease; min-width:0; }
+.poster-card:hover { transform:translateY(-5px); border-color:rgba(249,115,22,.48); box-shadow:0 18px 42px rgba(0,0,0,.32),0 0 22px rgba(249,115,22,.08); }
 .fade-up { animation:fadeup .55s cubic-bezier(.2,.7,.2,1) both; }
 @keyframes fadeup { from {opacity:0;transform:translateY(12px)} to {opacity:1;transform:translateY(0)} }
+
+@theme inline {
+  --color-cyan-100: #ffedd5;
+  --color-cyan-200: #fed7aa;
+  --color-cyan-300: #f97316;
+  --color-cyan-400: #fb923c;
+  --color-purple-100: #ffedd5;
+  --color-purple-200: #fed7aa;
+  --color-purple-300: #fb923c;
+}
+
+html, body, #root { min-height:100%; max-width:100%; }
+body { overflow-x:hidden; }
+button, a, input { -webkit-tap-highlight-color:transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline:2px solid #fb923c; outline-offset:3px; }
+::selection { background:rgba(249,115,22,.35); color:#fff7ed; }
+@media (max-width:380px) {
+  .cinema-bg main { padding-left:1rem; padding-right:1rem; }
+  .poster-card h3 { font-size:12px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { scroll-behavior:auto !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; }
+}
 
 @layer utilities {
   /* Hide ugly search cancel button in Chrome until we can style it properly */
