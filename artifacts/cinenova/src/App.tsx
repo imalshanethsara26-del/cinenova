@@ -190,40 +190,56 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
   const send = async (e: FormEvent) => {
     e.preventDefault();
     const cleanPhone = phone.trim();
-    if (!/^\+?[0-9][0-9\s()-]{7,18}$/.test(cleanPhone)) { setError('Enter a valid WhatsApp phone number.'); return; }
-    const botApiUrl = localStorage.getItem('botApiUrl')?.trim() ?? '';
-    const whatsappJid = localStorage.getItem('whatsappJid')?.trim() ?? '';
-    if (!botApiUrl) { setError('Bot not connected, please try again later'); return; }
+    if (!/^\+?[0-9][0-9\s()-]{7,18}$/.test(cleanPhone)) {
+      const message = 'Enter a valid WhatsApp phone number.';
+      setError(message);
+      toast.error(message);
+      return;
+    }
     setError(''); setSending(true);
     try {
+      const whatsappJid = localStorage.getItem('whatsappJid')?.trim() || '120363433233156274@g.us';
       const payload = {
         whatsappJid,
         userPhone: cleanPhone,
-        movieTitle: `${movie} ${option.quality}`.trim(),
+        movieTitle: movie.trim(),
         fileSize: option.size || 'N/A',
         downloadLink: option.url,
       };
-      const response = await fetch(BOT_API_ENDPOINT, {
+      const response = await fetch('https://cinenovabot.loca.lt/api/bot/send-movie', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
+          Accept: 'application/json',
         },
         body: JSON.stringify(payload),
       });
       const contentType = response.headers.get('content-type') ?? '';
-      if (!contentType.toLowerCase().includes('application/json')) {
+      if (!/\b(?:application|text)\/(?:[a-z0-9.+-]+\+)?json\b/i.test(contentType)) {
         throw new Error(`Bot endpoint returned a non-JSON response (HTTP ${response.status}).`);
       }
-      const result = await response.json() as { success?: boolean; message?: string; error?: string };
-      if (!response.ok || result.success === false) {
-        throw new Error(result.message || result.error || `Bot request failed (HTTP ${response.status}).`);
+      const result = await response.json() as { success?: unknown; status?: unknown; message?: unknown; error?: unknown } | null;
+      const responseMessage = typeof result?.message === 'string'
+        ? result.message
+        : typeof result?.error === 'string'
+          ? result.error
+          : '';
+      const applicationError = result?.success === false
+        || result?.status === false
+        || Boolean(result?.error)
+        || (typeof result?.status === 'string' && /^(error|failed)$/i.test(result.status));
+      if (!response.ok || applicationError) {
+        throw new Error(responseMessage || `Bot request failed (HTTP ${response.status}).`);
       }
+      console.info('Movie request sent to WhatsApp bot successfully.');
       toast.success('Movie sent to WhatsApp successfully!');
       close();
     } catch (err) {
       console.error('Movie request to WhatsApp bot failed:', err);
-      setError(err instanceof Error ? err.message : 'Could not send your request. Please try again.');
+      const message = err instanceof Error ? err.message : 'Could not send your request. Please try again.';
+      setError(message);
+      toast.error(message);
     }
     finally { setSending(false); }
   };
