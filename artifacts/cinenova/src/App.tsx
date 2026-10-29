@@ -300,44 +300,90 @@ function MoviePage() {
   const cast = Array.isArray(detail.cast) ? detail.cast as Record<string, unknown>[] : [];
   const gallery = Array.isArray(detail.gallery) ? detail.gallery.filter((image): image is string => typeof image === 'string' && /^https?:\/\//i.test(image)) : [];
   const [selected, setSelected] = useState<DownloadOption | null>(null);
-  return <div className="cinema-bg min-h-[100dvh] text-slate-100"><Header/><main className="mx-auto max-w-[1100px] px-5 py-9 md:px-10">
-    <button onClick={() => setLocation('/')} data-testid="button-back-discovery" className="mb-8 inline-flex items-center gap-2 text-xs text-slate-400 transition hover:text-cyan-100"><ArrowLeft size={15}/> Back to discovery</button>
-    {!movieUrl ? <div className="rounded-2xl border border-white/10 p-12 text-center"><h1 className="text-xl text-white">No film selected</h1><p className="mt-2 text-sm text-slate-400">Return to discovery and choose a title.</p></div> : isLoading ? <div className="grid animate-pulse gap-8 md:grid-cols-[260px_1fr]"><div className="aspect-[2/3] rounded-2xl bg-white/[.05]"/><div className="py-8"><div className="h-8 w-3/4 rounded bg-white/[.06]"/><div className="mt-6 h-4 w-1/3 rounded bg-white/[.05]"/></div></div> : isError ? <div className="rounded-2xl border border-rose-200/15 p-8 text-center"><p className="text-sm text-rose-100">Could not load film details.</p><button onClick={() => refetch()} data-testid="button-retry-details" className="mt-4 rounded-lg border border-white/10 px-4 py-2 text-xs">Try again</button></div> : <div className="grid gap-8 md:grid-cols-[270px_1fr] md:gap-12">
-      <div className="relative mx-auto w-full max-w-[270px] overflow-hidden rounded-2xl border border-white/10 bg-[#171927] shadow-[0_20px_60px_rgba(0,0,0,.4)]">{movie.image ? <img src={movie.image} alt={movie.title} className="aspect-[2/3] w-full object-cover"/> : <div className="flex aspect-[2/3] items-center justify-center bg-gradient-to-br from-[#172a36] to-[#201c35]"><Film size={60} className="text-cyan-100/25"/></div>}</div>
-       <div className="pt-2 md:pt-8"><p className="font-mono text-[10px] tracking-[.22em] text-cyan-200/75">FILM / DETAILS</p><h1 data-testid="text-detail-title" className="mt-4 max-w-[720px] text-3xl font-bold leading-tight tracking-[-.045em] text-white md:text-5xl">{movie.title}</h1><div className="mt-5 flex flex-wrap gap-2"><span className="rounded-full border border-cyan-200/20 bg-cyan-200/[.06] px-3 py-1.5 font-mono text-[10px] text-cyan-100">{movie.quality}</span>{detail.rating != null && <span className="rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] text-slate-300">RATING {String(detail.rating)}</span>}</div>
-        <p className="mt-7 max-w-[600px] text-sm leading-6 text-slate-400">{String(detail.story ?? detail.description ?? detail.synopsis ?? 'Choose an available clean link to request this film through WhatsApp. Downloads are sent via the configured bot; links are never opened directly from this page.')}</p>
-        {facts.length > 0 && <div data-testid="list-movie-facts" className="mt-6 grid max-w-[650px] grid-cols-2 gap-x-6 gap-y-4 border-y border-white/[.07] py-5 sm:grid-cols-3">{facts.map(([label, value]) => <div key={String(label)}><span className="block font-mono text-[8px] tracking-[.16em] text-slate-600">{String(label)}</span><span className="mt-1 block text-xs leading-5 text-slate-300">{displayValue(value)}</span></div>)}</div>}
-        {cast.length > 0 && <div className="mt-6"><p className="font-mono text-[9px] tracking-[.2em] text-slate-500">CAST</p><div className="mt-3 flex gap-3 overflow-x-auto pb-2">{cast.slice(0, 8).map((person, i) => <div key={`${String(person.name)}-${i}`} data-testid={`card-cast-${i}`} className="flex w-[150px] shrink-0 items-center gap-2.5 rounded-lg border border-white/[.07] bg-white/[.025] p-2">{typeof person.image === 'string' && person.image ? <img src={person.image} alt="" className="h-9 w-9 rounded-full object-cover"/> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-200/[.08] font-mono text-xs text-purple-100">{String(person.name ?? '?').slice(0, 1)}</span>}<span className="min-w-0"><span className="block truncate text-[11px] font-medium text-slate-200">{String(person.name ?? 'Cast member')}</span><span className="block truncate text-[9px] text-slate-500">{String(person.role ?? '')}</span></span></div>)}</div></div>}
-        {gallery.length > 0 ? (
-          <div className="mt-6">
-            <p className="font-mono text-[9px] tracking-[.2em] text-slate-500">STILLS</p>
-            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-              {gallery.slice(0, 8).map((image, i) => (
-                <img
-                  key={`${image}-${i}`}
-                  data-testid={`img-gallery-${i}`}
-                  src={image}
-                  alt={`${movie.title} still ${i + 1}`}
-                  loading="lazy"
-                  className="h-24 w-40 shrink-0 rounded-lg border border-white/10 object-cover"
-                />
-              ))}
+  return (
+    <div className="cinema-bg min-h-[100dvh] text-slate-100">
+      <Header/>
+      <main className="mx-auto max-w-[1100px] px-5 py-9 md:px-10">
+        <button onClick={() => setLocation('/')} data-testid="button-back-discovery" className="mb-8 inline-flex items-center gap-2 text-xs text-slate-400 transition hover:text-cyan-100"><ArrowLeft size={15}/> Back to discovery</button>
+        {!movieUrl ? (
+          <div className="rounded-2xl border border-white/10 p-12 text-center"><h1 className="text-xl text-white">No film selected</h1><p className="mt-2 text-sm text-slate-400">Return to discovery and choose a title.</p></div>
+        ) : isLoading ? (
+          <div className="grid animate-pulse gap-8 md:grid-cols-[260px_1fr]"><div className="aspect-[2/3] rounded-2xl bg-white/[.05]"/><div className="py-8"><div className="h-8 w-3/4 rounded bg-white/[.06]"/><div className="mt-6 h-4 w-1/3 rounded bg-white/[.05]"/></div></div>
+        ) : isError ? (
+          <div className="rounded-2xl border border-rose-200/15 p-8 text-center"><p className="text-sm text-rose-100">Could not load film details.</p><button onClick={() => refetch()} data-testid="button-retry-details" className="mt-4 rounded-lg border border-white/10 px-4 py-2 text-xs">Try again</button></div>
+        ) : (
+          <div className="grid gap-8 md:grid-cols-[270px_1fr] md:gap-12">
+            <div className="relative mx-auto w-full max-w-[270px] overflow-hidden rounded-2xl border border-white/10 bg-[#171927] shadow-[0_20px_60px_rgba(0,0,0,.4)]">
+              {movie.image ? <img src={movie.image} alt={movie.title} className="aspect-[2/3] w-full object-cover"/> : <div className="flex aspect-[2/3] items-center justify-center bg-gradient-to-br from-[#172a36] to-[#201c35]"><Film size={60} className="text-cyan-100/25"/></div>}
+            </div>
+            <div className="pt-2 md:pt-8">
+              <p className="font-mono text-[10px] tracking-[.22em] text-cyan-200/75">FILM / DETAILS</p>
+              <h1 data-testid="text-detail-title" className="mt-4 max-w-[720px] text-3xl font-bold leading-tight tracking-[-.045em] text-white md:text-5xl">{movie.title}</h1>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="rounded-full border border-cyan-200/20 bg-cyan-200/[.06] px-3 py-1.5 font-mono text-[10px] text-cyan-100">{movie.quality}</span>
+                {detail.rating != null && <span className="rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] text-slate-300">RATING {String(detail.rating)}</span>}
+              </div>
+              <p className="mt-7 max-w-[600px] text-sm leading-6 text-slate-400">{String(detail.story ?? detail.description ?? detail.synopsis ?? 'Choose an available clean link to request this film through WhatsApp. Downloads are sent via the configured bot; links are never opened directly from this page.')}</p>
+              {facts.length > 0 && <div data-testid="list-movie-facts" className="mt-6 grid max-w-[650px] grid-cols-2 gap-x-6 gap-y-4 border-y border-white/[.07] py-5 sm:grid-cols-3">{facts.map(([label, value]) => <div key={String(label)}><span className="block font-mono text-[8px] tracking-[.16em] text-slate-600">{String(label)}</span><span className="mt-1 block text-xs leading-5 text-slate-300">{displayValue(value)}</span></div>)}</div>}
+              {cast.length > 0 && <div className="mt-6"><p className="font-mono text-[9px] tracking-[.2em] text-slate-500">CAST</p><div className="mt-3 flex gap-3 overflow-x-auto pb-2">{cast.slice(0, 8).map((person, i) => <div key={`${String(person.name)}-${i}`} data-testid={`card-cast-${i}`} className="flex w-[150px] shrink-0 items-center gap-2.5 rounded-lg border border-white/[.07] bg-white/[.025] p-2">{typeof person.image === 'string' && person.image ? <img src={person.image} alt="" className="h-9 w-9 rounded-full object-cover"/> : <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-purple-200/[.08] font-mono text-xs text-purple-100">{String(person.name ?? '?').slice(0, 1)}</span>}<span className="min-w-0"><span className="block truncate text-[11px] font-medium text-slate-200">{String(person.name ?? 'Cast member')}</span><span className="block truncate text-[9px] text-slate-500">{String(person.role ?? '')}</span></span></div>)}</div></div>}
+              {gallery.length > 0 && (
+                <div className="mt-6">
+                  <p className="font-mono text-[9px] tracking-[.2em] text-slate-500">STILLS</p>
+                  <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+                    {gallery.slice(0, 8).map((image, i) => (
+                      <img key={`${image}-${i}`} data-testid={`img-gallery-${i}`} src={image} alt={`${movie.title} still ${i + 1}`} loading="lazy" className="h-24 w-40 shrink-0 rounded-lg border border-white/10 object-cover"/>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div className="mt-10 min-w-0 border-t border-white/[.08] pt-6">
+                <div className="flex min-w-0 flex-wrap items-end justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-mono text-[9px] tracking-[.2em] text-orange-300/80">AVAILABLE SOURCES</p>
+                    <h2 className="mt-2 text-lg font-semibold text-white">Choose a clean link</h2>
+                  </div>
+                  <span className="font-mono text-[10px] text-slate-500">{options.length} OPTIONS</span>
+                </div>
+                <a href="https://chat.whatsapp.com/KOfwT7f5EgoCm2T6uFkczg?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer" data-testid="link-whatsapp-group" className="mt-5 flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] px-4 py-3 text-sm font-semibold leading-6 text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-300/[.1]">
+                  <MessageCircle size={19} className="shrink-0 text-emerald-300"/>
+                  <span className="min-w-0 break-words">අපගේ WhatsApp සමූහයට අනිවාර්යයෙන්ම සම්බන්ධ වන්න!</span>
+                  <ArrowRight size={15} className="ml-auto shrink-0"/>
+                </a>
+
+                {/* WhatsApp Download Warning Box */}
+                <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs leading-5 text-rose-200">
+                  ⚠️ <strong className="font-semibold">වැදගත් / Important:</strong> WhatsApp හරහා ලින්ක් ලබා ගැනීමට 2GB ට වඩා අඩු ෆයිල් ප්‍රමාණයක් (Quality එකක්) තෝරන්න.<br />
+                  Please select a file size under 2GB to request via WhatsApp.
+                </div>
+
+                {options.length ? (
+                  <div className="mt-4 grid min-w-0 gap-3">
+                    {options.map((option, i) => (
+                      <button key={`${option.url}-${i}`} onClick={() => setSelected(option)} data-testid={`button-download-option-${i}`} className="group flex min-h-[72px] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[.09] bg-white/[.025] p-4 text-left transition hover:border-orange-200/40 hover:bg-orange-200/[.04]">
+                        <span className="flex min-w-0 items-center gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-orange-200/20 bg-orange-300/[.08] text-orange-100"><Download size={17}/></span>
+                          <span className="min-w-0">
+                            <span className="block text-sm font-semibold text-slate-100">{option.label}</span>
+                            <span className="mt-1 block break-words text-[10px] text-slate-500">{[option.quality, option.size].filter(Boolean).join(' · ') || 'Request via WhatsApp'}</span>
+                          </span>
+                        </span>
+                        <ArrowRight size={16} className="shrink-0 text-slate-600 transition group-hover:translate-x-1 group-hover:text-orange-100"/>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div data-testid="status-no-eligible-downloads" className="mt-5 rounded-xl border border-white/[.08] bg-white/[.025] p-5 text-sm leading-6 text-slate-400">No eligible download sources are available for this title right now.</div>
+                )}
+                <p className="mt-5 flex items-center gap-2 text-[10px] text-slate-600"><ShieldCheck size={13}/><span>Only verified PixelDrain links are available. Requests are sent through WhatsApp.</span></p>
+              </div>
             </div>
           </div>
-        ) : null}
-        <div className="mt-10 min-w-0 border-t border-white/[.08] pt-6"><div className="flex min-w-0 flex-wrap items-end justify-between gap-3"><div className="min-w-0"><p className="font-mono text-[9px] tracking-[.2em] text-orange-300/80">AVAILABLE SOURCES</p><h2 className="mt-2 text-lg font-semibold text-white">Choose a clean link</h2></div><span className="font-mono text-[10px] text-slate-500">{options.length} OPTIONS</span></div>
-        <a href="https://chat.whatsapp.com/KOfwT7f5EgoCm2T6uFkczg?s=cl&p=a&mlu=4&ilr=4" target="_blank" rel="noopener noreferrer" data-testid="link-whatsapp-group" className="mt-5 flex min-h-14 min-w-0 items-center gap-3 rounded-xl border border-emerald-300/20 bg-emerald-300/[.06] px-4 py-3 text-sm font-semibold leading-6 text-emerald-100 transition hover:border-emerald-200/40 hover:bg-emerald-300/[.1]"><MessageCircle size={19} className="shrink-0 text-emerald-300"/><span className="min-w-0 break-words">අපගේ WhatsApp සමූහයට අනිවාර්යයෙන්ම සම්බන්ධ වන්න!</span><ArrowRight size={15} className="ml-auto shrink-0"/></a>
-
-        {/* WhatsApp Download Warning Box */}
-        <div className="mt-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-xs leading-5 text-rose-200">
-          ⚠️ <strong className="font-semibold">වැදගත් / Important:</strong> WhatsApp හරහා ලින්ක් ලබා ගැනීමට 2GB ට වඩා අඩු ෆයිල් ප්‍රමාණයක් (Quality එකක්) තෝරන්න.<br />
-          Please select a file size under 2GB to request via WhatsApp.
-        </div>
-
-        {options.length ? <div className="mt-4 grid min-w-0 gap-3">{options.map((option, i) => <button key={`${option.url}-${i}`} onClick={() => setSelected(option)} data-testid={`button-download-option-${i}`} className="group flex min-h-[72px] min-w-0 items-center justify-between gap-3 rounded-xl border border-white/[.09] bg-white/[.025] p-4 text-left transition hover:border-orange-200/40 hover:bg-orange-200/[.04]"><span className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-orange-200/20 bg-orange-300/[.08] text-orange-100"><Download size={17}/></span><span className="min-w-0"><span className="block text-sm font-semibold text-slate-100">{option.label}</span><span className="mt-1 block break-words text-[10px] text-slate-500">{[option.quality, option.size].filter(Boolean).join(' · ') || 'Request via WhatsApp'}</span></span></span><ArrowRight size={16} className="shrink-0 text-slate-600 transition group-hover:translate-x-1 group-hover:text-orange-100"/></button></div> : <div data-testid="status-no-eligible-downloads" className="mt-5 rounded-xl border border-white/[.08] bg-white/[.025] p-5 text-sm leading-6 text-slate-400">No eligible download sources are available for this title right now.</div>}
-        <p className="mt-5 flex items-center gap-2 text-[10px] text-slate-600"><ShieldCheck size={13}/><span>Only verified PixelDrain links are available. Requests are sent through WhatsApp.</span></p></div>
-       </div>
-     </div>}</main><Footer/>{selected && <DownloadModal movie={movie.title} option={selected} close={() => setSelected(null)}/>}</div>;
+        )}
+      </main>
+      <Footer/>
+      {selected && <DownloadModal movie={movie.title} option={selected} close={() => setSelected(null)}/>}
+    </div>
+  );
 }
 function AdminPage() {
   const queryClient = useQueryClient();
