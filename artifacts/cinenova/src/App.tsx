@@ -10,6 +10,8 @@ import { ArrowLeft, ArrowRight, Check, ChevronLeft, Download, Film, LoaderCircle
 const queryClient = new QueryClient();
 const API = 'https://chithrapata-api.onrender.com';
 const DEFAULT_BOT_API_ENDPOINT = 'https://cinenovabot.loca.lt/api/bot/send-movie';
+const CONFIG_RAW_URL = 'https://raw.githubusercontent.com/imalshanethsara26-del/cinenova/refs/heads/main/config.json';
+
 type Movie = { title: string; image: string; quality: string; rating: string; link: string };
 type DownloadOption = { label: string; url: string; quality: string; size: string; provider: string };
 type ApiMovie = Record<string, unknown>;
@@ -213,9 +215,32 @@ function DownloadModal({ movie, option, close }: { movie: string; option: Downlo
     }
     setError(''); setSending(true);
     try {
-      const botApiUrl = localStorage.getItem('botApiUrl')?.trim() ?? '';
+      // GitHub Raw එකෙන් config එක Fetch කරගැනීම (Global Config)
+      let botApiUrl = '';
+      let whatsappJid = '120363433233156274@g.us';
+
+      try {
+        const configRes = await fetch(CONFIG_RAW_URL);
+        if (configRes.ok) {
+          const configData = await configRes.json() as { botApiUrl?: string; whatsappJid?: string };
+          botApiUrl = configData.botApiUrl?.trim() || '';
+          whatsappJid = configData.whatsappJid?.trim() || whatsappJid;
+        }
+      } catch (err) {
+        console.error('Failed to load global bot config from GitHub:', err);
+      }
+
+      // GitHub එකෙන් load කරගන්න බැරි වුනොත් LocalStorage එකට fall-back වීම
+      if (!botApiUrl) {
+        botApiUrl = localStorage.getItem('botApiUrl')?.trim() ?? '';
+      }
+      const localJid = localStorage.getItem('whatsappJid')?.trim();
+      if (localJid) {
+        whatsappJid = localJid;
+      }
+
       if (!botApiUrl) throw new Error('Bot not connected, please try again later');
-      const whatsappJid = localStorage.getItem('whatsappJid')?.trim() || '120363433233156274@g.us';
+
       const payload = {
         whatsappJid,
         userPhone: cleanPhone,
